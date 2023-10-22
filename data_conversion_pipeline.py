@@ -1,21 +1,13 @@
 from datasets import load_dataset
 import networkx as nx
 import tqdm
-from fairseq.checkpoint_utils import load_model_ensemble_and_task_from_hf_hub
-from fairseq.models.text_to_speech.hub_interface import TTSHubInterface
-import IPython.display as ipd
+from accelerate import PartialState  # Can also be Accelerator or AcceleratorState
+from transformers import pipeline
 
 webNLG_dataset = load_dataset("web_nlg", "webnlg_challenge_2017")
 
-models, cfg, task = load_model_ensemble_and_task_from_hf_hub(
-    "facebook/fastspeech2-en-ljspeech",
-    arg_overrides={"vocoder": "hifigan", "fp16": False, "output-sample-rate": 16000}
-)
-
-task.sr = 22050
-model = models[0]
-TTSHubInterface.update_cfg_with_data_cfg(cfg, task.data_cfg)
-generator = task.build_generator(models, cfg)
+distributed_state = PartialState()
+pipe = pipeline("text-to-speech", "suno/bark", device=distributed_state.device)
 
 ## Converting tripple set to a graph
 def generate_graph_for_tripple_set(tripple_set):
@@ -43,10 +35,9 @@ def print_details(idx):
     print("Graph Visual:")
     nx.draw(nx.cytoscape_graph(graph_list[idx]),with_labels=True, font_size=8)
     
-def generate_audio_content(text):
-    sample = TTSHubInterface.get_model_input(task, text)
-    wav, rate = TTSHubInterface.get_prediction(task, model, generator, sample)
-    return wav
+#def generate_audio_content(text):
+#    outputs = synthesizer([text])
+#    return outputs[0]["audio"]
 
 G = generate_graph_for_tripple_set(webNLG_dataset["train"][0]["modified_triple_sets"]["mtriple_set"][0])
 
@@ -60,14 +51,30 @@ for each in tqdm.tqdm(webNLG_dataset["train"]):
     eid_list.append(each["eid"])
     text_list.append(each["lex"]["text"])
     ## Create the WAV file:
-    each_wav_list = []
-    for each_text in each["lex"]["text"]:
-        each_wav_list.append(generate_audio_content(each_text))
-    wav_list.append(each_wav_list)
+#    each_wav_list = []
+#    for each_text in each["lex"]["text"]:
+#       each_wav_list.append(generate_audio_content(each_text))
+#   wav_list.append(each_wav_list)
     G = generate_graph_for_tripple_set(each["modified_triple_sets"]["mtriple_set"][0])
     graph_list.append(G)
 
 ## Save the data
-import pickle
-with open("webNLG_data.pickle", "wb") as f:
-    pickle.dump({"eid_list": eid_list, "graph_list": graph_list, "text_list": text_list, "wav_list": wav_list}, f)
+import pandas as pd
+df = pd.DataFrame({
+    "eid": eid_list,
+    "graph": graph_list,
+    "text": text_list,
+})
+
+df = df.explode('text').reset_index(drop=True)
+
+with distributed_state.split_between_processes(list(df["text"].values)) as prompt:
+    result = pipe(prompt)
+
+df["wav"] = result
+
+from datasets import Dataset
+processed_dataset = Dataset.from_pandas(df)
+
+## Save the processed dataset
+processed_dataset.save_to_disk("/home/CS546-CLEO/data/processed_dataset.hf")
