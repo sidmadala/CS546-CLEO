@@ -12,7 +12,9 @@ class CLEO(torch.nn.Module):
     def __init__(
         self,
         llm_model_path: str,
-        audio_features: int, # 1024 if ImageBind
+        audio_features: int, # 1024 if ImageBind, 512 if CLAP? 
+        # See both https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/clap_module/model.py#L28 
+        # and https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/clap_module/model.py#L532
         host_llm_on_cuda: bool = False,
         max_seq_len: int = 512,
         freeze_llm: bool = True,

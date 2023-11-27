@@ -1,5 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from imagebind import data
+import laion_clap
 import torch
 import typing
 from typing import List
@@ -18,7 +18,7 @@ class CLEOImageBind(CLEO):
         self,
         llm_model_path: str,
         audio_features: int, # 1024 if ImageBind,
-        imageBind_model,
+        clap_model,
         audio_gpu: str = "cpu",
         host_llm_on_cuda: bool = False,
         max_seq_len: int = 512,
@@ -26,19 +26,16 @@ class CLEOImageBind(CLEO):
         audio_instruction_token: str = "<wav>"
     ):
         super().__init__(llm_model_path, audio_features, host_llm_on_cuda, max_seq_len, freeze_llm, audio_instruction_token)
-        self.imageBind_model = imageBind_model
-        self.imageBind_model = self.imageBind_model.to(audio_gpu)
+        self.clap_model = clap_model
+        self.clap_model = self.clap_model.to(audio_gpu)
         self.audio_gpu = audio_gpu
         self.host_llm_on_cuda = host_llm_on_cuda
 
     def __get_audio_embeddings__(self, audio_paths: List[str]):
-        inputs = {
-            ModalityType.AUDIO: data.load_and_transform_audio_data(audio_paths, self.audio_gpu, sample_rate=24000),
-        }
-
         with torch.no_grad():
-            embeddings = self.imageBind_model(inputs)
-        return embeddings["audio"] # number of audio files x dimension of audio features as a tensor
+            # https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/hook.py#L120 returns NxD tensor
+            embeddings = clap_model.get_audio_embedding_from_filelist(x = audio_paths, use_tensor=True)
+        return embeddings
 
     def encode_audio(self, audio_paths):
         ## First grab the embeddings from imagebind

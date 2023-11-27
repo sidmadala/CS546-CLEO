@@ -3,24 +3,25 @@ from imagebind import data
 import torch
 import typing
 from typing import List
-from imagebind.models import imagebind_model
-from imagebind.models.imagebind_model import ModalityType
 import logging
 import torch.nn as nn
 from cleo.cleoImageBind import CLEOImageBind
 from datasets import load_from_disk
 import tqdm
 import numpy as np
+import laion_clap
 
 EPOCHS = 100
 BATCH_SIZE = 2
 
 dataset = load_from_disk("/home/CS546-CLEO/data/processed_dataset_with_uuid")
-ib_model = imagebind_model.imagebind_huge(pretrained=True)
+clap_model = laion_clap.CLAP_Module(enable_fusion=False)
+clap_model.load_ckpt()
 cleo_model = CLEOImageBind(
     llm_model_path = "/home/models/Llama-2-7b-hf",
-    audio_features = 1024, # 1024 if ImageBind,
-    imageBind_model = ib_model,
+    audio_features = 1024, # 1024 if ImageBind, 512 if CLAP? 
+        # See both https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/clap_module/model.py#L28 
+        # and https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/clap_module/model.py#L532    clap_model = clap_model,
     host_llm_on_cuda = True
 )
 
