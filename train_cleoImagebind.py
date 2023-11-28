@@ -1,5 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from imagebind import data
+# from imagebind import data
 import torch
 import typing
 from typing import List
@@ -19,9 +19,10 @@ clap_model = laion_clap.CLAP_Module(enable_fusion=False)
 clap_model.load_ckpt()
 cleo_model = CLEOImageBind(
     llm_model_path = "/home/models/Llama-2-7b-hf",
-    audio_features = 1024, # 1024 if ImageBind, 512 if CLAP? 
+    audio_features = 512, # 1024 if ImageBind, 512 if CLAP? 
         # See both https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/clap_module/model.py#L28 
         # and https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/clap_module/model.py#L532    clap_model = clap_model,
+    clap_model = clap_model,
     host_llm_on_cuda = True
 )
 
@@ -76,3 +77,16 @@ for epoch in range(1,EPOCHS):
 
             tepoch.set_postfix(loss = loss_val)
     print(f"Average Epoch Loss: {np.mean(loss_avg)}")
+    if epoch % 20 == 0:
+        torch.save({'epoch': epoch,
+                    'model_state_dict': cleo_model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'loss': np.mean(loss_avg)}, 
+                    f'./model_epoch{epoch}.pth')
+
+torch.save({'epoch': epoch,
+            'model_state_dict': cleo_model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': np.mean(loss_avg)}, 
+            './model_done.pth')
+

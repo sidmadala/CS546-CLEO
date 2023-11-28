@@ -3,8 +3,6 @@ import laion_clap
 import torch
 import typing
 from typing import List
-from imagebind.models import imagebind_model
-from imagebind.models.imagebind_model import ModalityType
 import logging
 import torch.nn as nn
 from cleo.cleoBase_V2 import CLEO
@@ -34,7 +32,7 @@ class CLEOImageBind(CLEO):
     def __get_audio_embeddings__(self, audio_paths: List[str]):
         with torch.no_grad():
             # https://github.com/LAION-AI/CLAP/blob/817041c079af560fa2c610287c68c7c97ace50b6/src/laion_clap/hook.py#L120 returns NxD tensor
-            embeddings = clap_model.get_audio_embedding_from_filelist(x = audio_paths, use_tensor=True)
+            embeddings = self.clap_model.get_audio_embedding_from_filelist(x = audio_paths, use_tensor=True)
         return embeddings
 
     def encode_audio(self, audio_paths):

@@ -1,10 +1,8 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from imagebind import data
+import laion_clap
 import torch
 import typing
 from typing import List
-from imagebind.models import imagebind_model
-from imagebind.models.imagebind_model import ModalityType
 import logging
 import torch.nn as nn
 
