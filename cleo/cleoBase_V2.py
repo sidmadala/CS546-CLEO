@@ -16,7 +16,8 @@ class CLEO(torch.nn.Module):
         host_llm_on_cuda: bool = False,
         max_seq_len: int = 512,
         freeze_llm: bool = True,
-        audio_instruction_token: str = "<wav>"
+        audio_instruction_token: str = "<wav>",
+        audio_gpu: str = "cpu"
     ):
         super().__init__()
         self.llm_tokenizer, self.llm_model = self.__load_llm__(
@@ -25,6 +26,8 @@ class CLEO(torch.nn.Module):
 
         ## projection layer
         self.proj = nn.Linear(audio_features, self.llm_model.config.hidden_size)
+        if audio_gpu != "cpu":
+            self.proj = self.proj.to(audio_gpu)
         self.max_seq_len = max_seq_len
         self.audio_instruction_token = audio_instruction_token
         self.host_llm_on_cuda = host_llm_on_cuda

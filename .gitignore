@@ -162,3 +162,5 @@ models/
 data/processed_dataset
 wav_samples/
 .checkpoints/imagebind_huge.pth
+runs/
+.vscode
