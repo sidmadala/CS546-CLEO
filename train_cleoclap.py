@@ -20,11 +20,28 @@ BATCH_SIZE = 8
 experiment_name = "CLAP_model_all_sentences"
 
 try:  
-    os.mkdir(f"/home/CS546-CLEO/models/{experiment_name}")  
+    print(f"Attempting to create directory: ./models/{experiment_name}")
+    os.mkdir(f"./models/{experiment_name}")  
+    print("Success!")
 except OSError as error:  
-    print(error)   
+    print(f"Failure: {error}")
 
-writer = SummaryWriter(log_dir=f"/home/CS546-CLEO/runs/{experiment_name}")
+try:
+    print(f"Attempting to create directory: ./runs")
+    os.mkdir(f"./runs")  
+    print("Success!")
+except OSError as error:  
+    print(f"Failure: {error}") 
+
+try:
+    print(f"Attempting to create directory: ./runs/{experiment_name}")
+    os.mkdir(f"./runs/{experiment_name}")  
+    print("Success!")
+except OSError as error:  
+    print(f"Failure: {error}")  
+ 
+
+writer = SummaryWriter(log_dir=f"./runs/{experiment_name}")
 clapModelVr = "laion/clap-htsat-unfused"
 
 dataset = load_dataset("patrickvonplaten/librispeech_asr_self_contained", split="train.clean.100")
@@ -57,7 +74,7 @@ def custom_collate_fn(original_batch):
 print("Dataset Loaded...")
 
 cleo_model = CLEOClap(
-        llm_model_path = "/home/models/Llama-2-7b-hf",
+        llm_model_path = "./models/Llama-2-7b-hf",
         audio_features = 512, # 1024 if ImageBind,
         host_llm_on_cuda = True,
         audio_gpu = "cuda:1",
@@ -120,3 +137,10 @@ for epoch in range(1,EPOCHS):
             numIter += 1
             
     print(f"Average Epoch Loss: {np.mean(loss_avg)}")
+
+
+torch.save({'epoch': epoch,
+            'model_state_dict': cleo_model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': np.mean(loss_avg)}, 
+            f'./models/{experiment_name}/model_complete.pth')
