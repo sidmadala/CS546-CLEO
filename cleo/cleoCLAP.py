@@ -95,6 +95,28 @@ class CLEOClap(CLEO):
         )
         return outputs
 
+    def generate(self, instruction, audio_array, labels, max_new_tokens=15, top_p=.5, top_k=50, temperature=1.5, repetition_penalty=1.5):
+        ## Create batch
+        batch = {
+            "instructions": [instruction],
+            "audio_array": [audio_array],
+            "labels": [labels]
+        }
+        
+        input_embs, input_attn, labels = self.__prepare_batch__(batch)
+
+        output = self.llm_model.generate(
+            inputs_embeds = input_embs,
+            attention_mask = input_attn,
+            max_new_tokens = max_new_tokens,
+            repetition_penalty = repetition_penalty,
+            temperature = temperature,
+            top_k = top_k,
+            top_p = top_p,
+            do_sample = True,
+        )
+        return output
+
 ## create the main function
 # if __name__ == "__main__":
 #     dataset = load_dataset("patrickvonplaten/librispeech_asr_self_contained", split="train.clean.100[0:100]")

@@ -94,6 +94,30 @@ class CLEOImageBind(CLEO):
         )
         return outputs
 
+    def generate(self, instruction, audioPath, label, max_new_tokens=15, top_p=.5, top_k=50, temperature=1.5, repetition_penalty=1.5):
+        ## Create the batch
+        batch = {
+            "instructions": [instruction],
+            "audio_paths": [[audioPath]],
+            "labels": [label]
+        }
+
+        ## Get the embeddings
+        input_embs, input_attn, labels = self.__prepare_batch__(batch)
+
+        output = self.llm_model.generate(
+            inputs_embeds = input_embs,
+            attention_mask = input_attn,
+            max_new_tokens = max_new_tokens,
+            top_p = top_p,
+            top_k = top_k,
+            temperature = temperature,
+            repetition_penalty = repetition_penalty,
+            do_sample = True
+        )
+        return output
+
+
 ## create the main function
 # if __name__ == "__main__":
 #         ## Define the prompt:

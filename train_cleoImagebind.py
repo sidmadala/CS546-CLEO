@@ -16,17 +16,16 @@ from torch.utils.tensorboard import SummaryWriter
 
 EPOCHS = 100
 BATCH_SIZE = 8
-experiment_name = "ImageBind_model"
+experiment_name = "ImageBind_model_short_sentences"
 try:  
     os.mkdir(f"/home/CS546-CLEO/models/{experiment_name}")  
 except OSError as error:  
     print(error)   
-    
+
 writer = SummaryWriter(log_dir=f"/home/CS546-CLEO/runs/{experiment_name}")
 
 #dataset = load_from_disk("/home/CS546-CLEO/data/processed_dataset_with_uuid")
-dataset = load_dataset("patrickvonplaten/librispeech_asr_self_contained")
-dataset = dataset["train.clean.100"]
+dataset = load_dataset("patrickvonplaten/librispeech_asr_self_contained", split="train.clean.100")
 print("Dataset Loaded...")
 
 ib_model = imagebind_model.imagebind_huge(pretrained=True)
@@ -37,6 +36,16 @@ cleo_model = CLEOImageBind(
     host_llm_on_cuda = True
 )
 print("Models Loaded...")
+
+sentences = dataset["text"]
+sentence_length = []
+for sentence in tqdm.tqdm(sentences):
+    sentence_length.append(len(cleo_model.llm_tokenizer.encode(sentence, add_special_tokens=False)))
+sentence_length = np.array(sentence_length)
+dataset = dataset.add_column("sentence_length", sentence_length)
+dataset = dataset.select(np.where(sentence_length < 20)[0])
+print("Dataset modified...")
+
 
 from torch.utils.data import Dataset, DataLoader
 from scipy.io.wavfile import write as write_wav
@@ -94,7 +103,14 @@ for epoch in range(1,EPOCHS):
                 os.remove(each)
 
             tepoch.set_postfix(loss = loss_val)
-            numIter += 1
             if numIter % 50 == 0:
-                torch.save(model, f"/home/CS546-CLEO/models/{experiment_name}/model.pt")
+                ## Need to generate an example
+                instruction, audioPath, label = cleoDataset.__getitem__(0)
+                valOutput = cleo_model.generate(instruction, audioPath, label)
+                decodedOutput = cleo_model.llm_tokenizer.decode(valOutput[0], skip_special_tokens=True)
+                saveInfo = f"Model Output:\n{decodedOutput}\n\nActual Label:\n{label}"
+                writer.add_text("Model Output", saveInfo, numIter)
+
+                torch.save(cleo_model.state_dict(), f"/home/CS546-CLEO/models/{experiment_name}/model.pt")
+            numIter += 1
     print(f"Average Epoch Loss: {np.mean(loss_avg)}")
